@@ -17,7 +17,6 @@ spec:
     - title: Provide Information for Application
       required:
         - component_id
-        - java_package_name
       properties:
         component_id:
           title: Name
@@ -26,21 +25,11 @@ spec:
           default: my-liberty-app
           ui:field: EntityNamePicker
           maxLength: 23
-        group_id:
-          title: Group Id
+        image_name:
+          title: Image name
           type: string
-          default: redhat.janus
-          description: Maven Group Id
-        artifact_id:
-          title: Artifact Id
-          type: string
-          default: liberty-app
-          description: Maven Artifact Id
-        java_package_name:
-          title: Java Package Name
-          default: org.redhat.janus
-          type: string
-          description: Name for the java package. eg (com.redhat.blah)
+          default: mylibertyapp
+          description: Image Name
         description:
           title: Description
           type: string
@@ -54,44 +43,9 @@ spec:
           title: Image Registry
           type: string
           enum:
-            - Openshift
-            - Quay
-      dependencies:
-        image_registry:
-          oneOf:
-            - properties:
-                image_registry:
-                  enum:
-                    - Openshift
-                image_host:
-                  title: Image Host
-                  type: string
-                  description: Host for storing image
-                  default: image-registry.openshift-image-registry.svc:5000
-                image_tag:
-                  title: Image Tag
-                  default: latest
-                  type: string
-                  description: Build Image tag
-            - properties:
-                image_registry:
-                  enum:
-                    - Quay
-                image_host:
-                  title: Image Host
-                  type: string
-                  description: Host for storing image
-                  default: quay-4z2t2.apps.67c1045bd8856f9bb04f2985.am1.techzone.ibm.com
-                image_organization:
-                  title: Organization
-                  type: string
-                  description: Name of the Quay Organization
-                  default: quayadmin
-                image_tag:
-                  title: Image Tag
-                  default: latest
-                  type: string
-                  description: Build Image tag
+            - OpenShift Build Config
+            - Github Action
+            - Tekton Pipeline
     - title: Application repository Information
       required:
         - repo
@@ -125,14 +79,14 @@ spec:
         repoUrl: "${{ parameters.repo.host }}?owner=${{ parameters.repo.owner }}&repo=${{parameters.component_id}}"
         repoVisibility: public
 
-    - id: generate # oc build
+    - id: generate
       name: Generate OpenShift BuildConfig
       action: fetch:template
       input:
         url: "https://github.com/mattbman23/backstage_k8_deployment_template/blob/main/buildconfig.yml"
         values:
-          repoUrl: "${{ parameters.repo.host }}/${{ parameters.repo.owner }}/${{parameters.component_id}}"
-          imageName: ${{  }}
+          repoUrl: "https://${{ parameters.repo.host }}/${{ parameters.repo.owner }}/${{parameters.component_id}}"
+          imageName: ${{ parameters.image_name  }}
 
     - id: apply-buildconfig
       name: Apply OpenShift BuildConfig
