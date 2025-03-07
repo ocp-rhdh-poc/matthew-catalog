@@ -1,0 +1,125 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: springboot-template
+  title: Spring Boot gRPC Service
+  description: Create a simple microservice using gRPC and Spring Boot Java
+  tags:
+    - recommended
+    - java
+    - grpc
+spec:
+  owner: service@example.com
+  type: service
+
+  parameters:
+    - title: Provide some simple information
+      required:
+        - component_id
+        - owner
+        - java_package_name
+      properties:
+        component_id:
+          title: Name
+          type: string
+          description: Unique name of the component
+          ui:field: EntityNamePicker
+        java_package_name:
+          title: Java Package Name
+          type: string
+          description: Name for the java package. eg (io.backstage.blah)
+        description:
+          title: Description
+          type: string
+          description: Help others understand what this website is for.
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the component
+          ui:field: OwnerPicker
+          ui:options:
+            allowedKinds:
+              - Group
+    - title: Choose a location
+      required:
+        - repoUrlApplication
+        - repoUrlGitops
+      properties:
+        repoUrlApplication:
+          title: Application Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+        repoUrlGitops:
+          title: Gitops Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+  steps:
+    - id: template
+      name: Fetch Skeleton + Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        copyWithoutRender:
+          - .github/workflows/*
+        values:
+          component_id: ${{ parameters.component_id }}
+          description: ${{ parameters.description }}
+          artifact_id: ${{ parameters.component_id }}
+          java_package_name: ${{ parameters.java_package_name }}
+          owner: ${{ parameters.owner }}
+          destination: ${{ parameters.repoUrlApplication | parseRepoUrl }}
+          destination_gitops: ${{ parameters.repoUrlGitops | parseRepoUrl }}
+          http_port: 8080
+
+    - id: publish
+      name: Publish Application Repo
+      action: publish:github
+      input:
+        allowedHosts: ["github.com"]
+        description: This is ${{ parameters.component_id }}
+        repoUrl: ${{ parameters.repoUrlApplication }}
+        sourcePath: ./application
+
+    - id: publish-gitops
+      name: Publish GitOps Repo
+      action: publish:github
+      input:
+        allowedHosts: ["github.com"]
+        description: This is ${{ parameters.component_id }}
+        repoUrl: ${{ parameters.repoUrlGitops }}
+        sourcePath: ./gitops
+
+    - id: pr-argocd
+      name: Create GitOps PR
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=gitops-infrastructure-apps&owner=ocp-rhdh-poc
+        branchName: deploy-${{ parameters.component_id }}
+        targetBranchName: main
+        title: Deploy ${{ parameters.component_id }} application components
+        description: Pull request to deploy application components for ${{ parameters.component_id }}
+        sourcePath: ./argocd
+        targetPath: resources/apps/${{ parameters.component_id }}
+
+    - id: register
+      name: Register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: "/catalog-info.yaml"
+
+  output:
+    links:
+      - title: Application Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: GitOps Repository
+        url: ${{ steps.publish-gitops.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
