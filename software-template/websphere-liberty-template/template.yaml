@@ -124,3 +124,19 @@ spec:
       input:
         repoUrl: "${{ parameters.repo.host }}?owner=${{ parameters.repo.owner }}&repo=${{parameters.component_id}}"
         repoVisibility: public
+
+    - id: generate # oc build
+      name: Generate OpenShift BuildConfig
+      action: fetch:template
+      input:
+        url: "https://github.com/mattbman23/backstage_k8_deployment_template/blob/main/buildconfig.yml"
+        values:
+          repoUrl: "${{ parameters.repo.host }}/${{ parameters.repo.owner }}/${{parameters.component_id}}"
+          imageName: ${{  }}
+
+    - id: apply-buildconfig
+      name: Apply OpenShift BuildConfig
+      action: kubernetes:apply
+      input:
+        manifests:
+          - ${{ steps.generate.output.manifests }}
