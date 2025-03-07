@@ -9,7 +9,7 @@ metadata:
     - java
     - websphere-liberty
     - maven
-    - CICD
+    - cicd
 spec:
   owner: rhdh
   type: service
